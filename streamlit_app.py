@@ -57,61 +57,65 @@ def run_inference_and_draw(img, model, confidence, overlap_thresh, object_classe
     return img
 
 
-# --- VideoProcessor for Live Webcam ---
 class YOLOWebcamProcessor(VideoProcessorBase):
     def __init__(self):
-        self.confidence = confidence
-        self.overlap = overlap_thresh
-        self.object_classes = object_classes
-
-        # Frame skipping setup
         self.frame_count = 0
-        self.skip_rate = 3   # predict every 3rd frame
-        self.last_results = None
+        self.skip_rate = 2  # run inference every 3rd frame
+        self.last_boxes = []  # store last detections
 
     def recv(self, frame: VideoFrame) -> VideoFrame:
         img = frame.to_ndarray(format="bgr24")
+        orig_h, orig_w = img.shape[:2]
 
-        # Resize for faster inference
-        img_resized = cv2.resize(img, (640, 480))
+        # For faster inference → resized copy
+        resized = cv2.resize(img, (640, 480))
+        r_h, r_w = resized.shape[:2]
 
         self.frame_count += 1
-        if self.frame_count % self.skip_rate == 0 or self.last_results is None:
+        if self.frame_count % self.skip_rate == 0 or not self.last_boxes:
             try:
-                cls_indices = None
-                if self.object_classes:
-                    cls_indices = [
+                results = model(
+                    resized,
+                    conf=confidence,
+                    iou=overlap_thresh,
+                    classes=[
                         list(model.names).index(cls)
-                        for cls in self.object_classes if cls in model.names
-                    ]
+                        for cls in object_classes if object_classes and cls in model.names
+                    ] if object_classes else None,
+                )
 
-                results = model(img_resized, conf=self.confidence, iou=self.overlap, classes=cls_indices)
-                self.last_results = results
+                boxes = []
+                for r in results:
+                    for box in r.boxes:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        cls_id = int(box.cls[0])
+                        conf_score = float(box.conf[0])
+
+                        # Scale back to original size
+                        scale_x = orig_w / r_w
+                        scale_y = orig_h / r_h
+                        x1, x2 = int(x1 * scale_x), int(x2 * scale_x)
+                        y1, y2 = int(y1 * scale_y), int(y2 * scale_y)
+
+                        boxes.append((x1, y1, x2, y2, cls_id, conf_score))
+                self.last_boxes = boxes
+
             except Exception as e:
-                # Fail-safe: don't block stream if YOLO errors out
                 print(f"[YOLO ERROR] {e}")
-                results = None
-        else:
-            results = self.last_results
 
-        # Draw detections on resized frame
-        if results is not None:
-            for r in results:
-                for box in r.boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    cls_id = int(box.cls[0])
-                    conf_score = float(box.conf[0])
-                    label = f"{model.names[cls_id]} {conf_score:.2f}"
+        # Draw stored boxes on the *original* frame
+        for (x1, y1, x2, y2, cls_id, conf_score) in self.last_boxes:
+            label = f"{model.names[cls_id]} {conf_score:.2f}"
+            font_scale = max(0.5, min(orig_w, orig_h) / 600)
+            thickness = max(1, int(min(orig_w, orig_h) / 500))
 
-                    h, w, _ = img_resized.shape
-                    font_scale = max(0.5, min(w, h) / 600)
-                    thickness = max(1, int(min(w, h) / 500))
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), thickness)
+            cv2.putText(
+                img, label, (x1, max(0, y1 - 10)),
+                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), thickness
+            )
 
-                    cv2.rectangle(img_resized, (x1, y1), (x2, y2), (0, 255, 0), thickness)
-                    cv2.putText(img_resized, label, (x1, max(0, y1 - 10)),
-                                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), thickness)
-
-        return VideoFrame.from_ndarray(img_resized, format="bgr24")
+        return VideoFrame.from_ndarray(img, format="bgr24")
 
 
 
