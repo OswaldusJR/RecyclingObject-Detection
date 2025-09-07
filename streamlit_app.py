@@ -61,8 +61,31 @@ def run_inference_and_draw(img, model, confidence, overlap_thresh, object_classe
 class YOLOWebcamProcessor(VideoProcessorBase):
     def recv(self, frame: VideoFrame) -> VideoFrame:
         img = frame.to_ndarray(format="bgr24")
-        img = run_inference_and_draw(img, model, confidence, overlap_thresh, object_classes)
-        return VideoFrame.from_ndarray(img, format="bgr24")
+
+    # Resize for faster inference (trade-off quality vs speed)
+        img_resized = cv2.resize(img, (640, 480))
+
+    # Run inference
+        results = model(img_resized, conf=self.confidence, iou=self.overlap)
+
+    # Draw detections on resized image
+        for r in results:
+            for box in r.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cls_id = int(box.cls[0])
+                conf_score = float(box.conf[0])
+                label = f"{model.names[cls_id]} {conf_score:.2f}"
+
+                h, w, _ = img_resized.shape
+                font_scale = max(0.5, min(w, h) / 600)
+                thickness = max(1, int(min(w, h) / 500))
+
+                cv2.rectangle(img_resized, (x1, y1), (x2, y2), (0, 255, 0), thickness)
+                cv2.putText(img_resized, label, (x1, max(0, y1 - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), thickness)
+
+        return VideoFrame.from_ndarray(img_resized, format="bgr24")
+
 
 
 # --- Mode selection ---
