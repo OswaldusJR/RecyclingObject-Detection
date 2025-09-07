@@ -33,18 +33,32 @@ def run_inference_and_draw(img, model, confidence, overlap_thresh, object_classe
 
     results = model(img, conf=confidence, iou=overlap_thresh, classes=cls_indices)
 
+    height, width = img.shape[:2]
+    font_scale = max(0.5, min(width, height) / 800)  # scales with image size
+    thickness = max(1, int(min(width, height) / 400))  # scales with image size
+
     for r in results:
         for box in r.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             cls_id = int(box.cls[0])
             conf_score = float(box.conf[0])
             label = f"{model.names[cls_id]} {conf_score:.2f}"
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            # Draw rectangle
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), thickness)
+
+            # Draw label background for readability
+            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+            cv2.rectangle(img, (x1, max(0, y1 - text_height - baseline)), (x1 + text_width, y1), (0, 255, 0), -1)
+
+            # Draw text over the background
             cv2.putText(
-                img, label, (x1, max(0, y1 - 5)),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2
+                img, label, (x1, max(0, y1 - baseline)),
+                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), thickness
             )
+
     return img
+
 
 
 # --- Webcam processor with frame skipping ---
