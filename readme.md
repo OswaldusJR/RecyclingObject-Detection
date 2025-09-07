@@ -5,6 +5,8 @@ It demonstrates how deep learning can be applied to **detect recyclable waste ob
 
 The model used is **YOLOv11(s)**, trained on the [TACO dataset](http://tacodataset.org), which contains litter annotations for real-world waste detection tasks.  
 
+You may tryout the app via "recyclingobjectdetection.streamlit.app"
+
 ## 📖 Project Description
 
 - **Model**: YOLOv11(s) (Ultralytics)  
