@@ -5,8 +5,6 @@ It demonstrates how deep learning can be applied to **detect recyclable waste ob
 
 The model used is **YOLOv11(s)**, trained on the [TACO dataset](http://tacodataset.org), which contains litter annotations for real-world waste detection tasks.  
 
-===
-
 ## 📖 Project Description
 
 - **Model**: YOLOv11(s) (Ultralytics)  
@@ -24,75 +22,22 @@ The deployed app allows users to:
 - Adjust **confidence threshold** and **NMS (overlap filtering)**  
 - Filter detections by **object class** (e.g., plastic only)  
 
-Classes are reassigned and mapped into 5 generalized groups from 60 classes
-{   'Aluminium foil': 'Metal',
-    'Battery': 'Other',
-    'Aluminium blister pack': 'Metal',
-    'Carded blister pack': 'Other',
-    'Other plastic bottle': 'Plastic',
-    'Clear plastic bottle': 'Plastic',
-    'Glass bottle': 'Glass',
-    'Plastic bottle cap': 'Plastic',
-    'Metal bottle cap': 'Metal',
-    'Broken glass': 'Glass',
-    'Food Can': 'Metal',
-    'Aerosol': 'Other',
-    'Drink can': 'Metal',
-    'Toilet tube': 'Other',
-    'Other carton': 'Paper',
-    'Egg carton': 'Paper',
-    'Drink carton': 'Paper',
-    'Corrugated carton': 'Paper',
-    'Meal carton': 'Paper',
-    'Pizza box': 'Paper',
-    'Paper cup': 'Paper',
-    'Disposable plastic cup': 'Plastic',
-    'Foam cup': 'Plastic',
-    'Glass cup': 'Glass',
-    'Other plastic cup': 'Plastic',
-    'Food waste': 'Other',
-    'Glass jar': 'Glass',
-    'Plastic lid': 'Plastic',
-    'Metal lid': 'Metal',
-    'Other plastic': 'Plastic',
-    'Magazine paper': 'Paper',
-    'Tissues': 'Paper',
-    'Wrapping paper': 'Paper',
-    'Normal paper': 'Paper',
-    'Paper bag': 'Paper',
-    'Plastified paper bag': 'Paper',
-    'Plastic film': 'Plastic',
-    'Six pack rings': 'Plastic',
-    'Garbage bag': 'Plastic',
-    'Other plastic wrapper': 'Plastic',
-    'Single-use carrier bag': 'Plastic',
-    'Polypropylene bag': 'Plastic',
-    'Crisp packet': 'Plastic',
-    'Spread tub': 'Plastic',
-    'Tupperware': 'Plastic',
-    'Disposable food container': 'Plastic',
-    'Foam food container': 'Plastic',
-    'Other plastic container': 'Plastic',
-    'Plastic glooves': 'Plastic',
-    'Plastic utensils': 'Plastic',
-    'Pop tab': 'Metal',
-    'Rope & strings': 'Other',
-    'Scrap metal': 'Metal',
-    'Shoe': 'Other',
-    'Squeezable tube': 'Plastic',
-    'Plastic straw': 'Plastic',
-    'Paper straw': 'Paper',
-    'Styrofoam piece': 'Plastic',
-    'Unlabeled litter': 'Other',
-    'Cigarette': 'Other'}
+Classes are reassigned and mapped into 5 generalized groups from 60 classes of specific items
 
-    For metrics, you may refer to **models/Additional_info**
-===
+class_mapping = {
+    'Plastic': 0,
+    'Metal': 1,
+    'Glass': 2,
+    'Paper': 3,
+    'Other': 4
+}
+
+    For metrics, you may refer to "models/Additional_info"
 
 ## 📊 Dataset
 This project uses the **TACO (Trash Annotations in Context)** dataset:  
 - Website: [http://tacodataset.org](http://tacodataset.org)  
-- License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)  
+- License: [MIT]
 
 ### Citation
 ```bibtex
