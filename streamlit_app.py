@@ -88,26 +88,19 @@ if option == "Upload Image":
 elif option == "Upload Video":
     uploaded_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov", "mkv"])
     if uploaded_file is not None:
-        # Save uploaded file temporarily
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        # Save uploaded file temporarily with the original extension
+        ext = uploaded_file.name.split('.')[-1]
+        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
         tfile.write(uploaded_file.read())
 
-        # Convert uploaded video to AVI using ffmpeg
-        avi_file = tfile.name.replace(".mp4", "_converted.avi")
-        import subprocess
-        subprocess.run([
-            "ffmpeg", "-y", "-i", tfile.name,
-            "-vcodec", "msmpeg4", "-qscale:v", "2", avi_file
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        # Open the converted AVI
-        cap = cv2.VideoCapture(avi_file)
+        # Open the uploaded video
+        cap = cv2.VideoCapture(tfile.name)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
 
-        # Prepare output path for processed video
-        out_path = avi_file.replace("_converted.avi", "_processed.avi")
+        # Output path as .avi
+        out_path = tfile.name.replace(f".{ext}", "_processed.avi")
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
         out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
@@ -116,6 +109,7 @@ elif option == "Upload Video":
             ret, frame = cap.read()
             if not ret:
                 break
+            # Run YOLO inference
             frame = run_inference_and_draw(frame, model, confidence, overlap_thresh, object_classes)
             out.write(frame)
 
@@ -124,6 +118,7 @@ elif option == "Upload Video":
 
         st.success("✅ Video processed successfully!")
         st.video(out_path)
+
 
 # --- Live Webcam ---
 elif option == "Live Webcam":
