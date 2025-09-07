@@ -85,35 +85,56 @@ if option == "Upload Image":
         st.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption="Detected Image", use_container_width=True)
 
 # --- Upload Video ---
-elif option == "Upload Video":
-    uploaded_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov", "mkv"])
+elif option == "Upload Image/Video":
+    uploaded_file = st.file_uploader(
+        "Upload an image or video", type=["jpg", "jpeg", "png", "mp4", "avi"]
+    )
     if uploaded_file is not None:
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        tfile.write(uploaded_file.read())
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
 
-        cap = cv2.VideoCapture(tfile.name)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out_path = tfile.name.replace(".mp4", "_processed.mp4")
-        out = cv2.VideoWriter(
-            out_path,
-            fourcc,
-            cap.get(cv2.CAP_PROP_FPS),
-            (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
-        )
+        # --- Image ---
+        if uploaded_file.name.lower().endswith((".jpg", ".jpeg", ".png")):
+            img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            img = run_inference_and_draw(img, model, confidence, overlap_thresh, object_classes)
+            st.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB),
+                     caption="Detected Image",
+                     use_container_width=True)
 
-        st.info("⏳ Processing video, please wait...")
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame = run_inference_and_draw(frame, model, confidence, overlap_thresh, object_classes)
-            out.write(frame)
+        # --- Video ---
+        else:
+            # Save temp input video
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
+            tfile.write(file_bytes)
 
-        cap.release()
-        out.release()
+            cap = cv2.VideoCapture(tfile.name)
+            out_path = tfile.name.replace(".avi", "_processed.avi")
 
-        st.success("✅ Video processed successfully!")
-        st.video(out_path)
+            # Use AVI + MJPG (widely supported by browsers)
+            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+            out = cv2.VideoWriter(
+                out_path,
+                fourcc,
+                cap.get(cv2.CAP_PROP_FPS),
+                (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                 int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
+            )
+
+            st.info("⏳ Processing video, please wait...")
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                frame = run_inference_and_draw(
+                    frame, model, confidence, overlap_thresh, object_classes
+                )
+                out.write(frame)
+
+            cap.release()
+            out.release()
+
+            st.success("✅ Video processed successfully!")
+            st.video(out_path)
+
 
 # --- Live Webcam ---
 elif option == "Live Webcam":
