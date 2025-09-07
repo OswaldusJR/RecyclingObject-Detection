@@ -88,21 +88,28 @@ if option == "Upload Image":
 elif option == "Upload Video":
     uploaded_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov", "mkv"])
     if uploaded_file is not None:
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
+        # Save uploaded file temporarily
+        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         tfile.write(uploaded_file.read())
 
-        cap = cv2.VideoCapture(tfile.name)
-        out_path = tfile.name.replace(".avi", "_processed.avi")
+        # Convert uploaded video to AVI using ffmpeg
+        avi_file = tfile.name.replace(".mp4", "_converted.avi")
+        import subprocess
+        subprocess.run([
+            "ffmpeg", "-y", "-i", tfile.name,
+            "-vcodec", "msmpeg4", "-qscale:v", "2", avi_file
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # Use AVI + MJPG (browser-friendly)
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-        out = cv2.VideoWriter(
-            out_path,
-            fourcc,
-            cap.get(cv2.CAP_PROP_FPS),
-            (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-             int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
-        )
+        # Open the converted AVI
+        cap = cv2.VideoCapture(avi_file)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        # Prepare output path for processed video
+        out_path = avi_file.replace("_converted.avi", "_processed.avi")
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
         st.info("⏳ Processing video, please wait...")
         while cap.isOpened():
@@ -117,8 +124,6 @@ elif option == "Upload Video":
 
         st.success("✅ Video processed successfully!")
         st.video(out_path)
-
-
 
 # --- Live Webcam ---
 elif option == "Live Webcam":
