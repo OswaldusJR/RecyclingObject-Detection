@@ -90,19 +90,30 @@ elif option == "Upload Video":
     if uploaded_file is not None:
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         tfile.write(uploaded_file.read())
+
         cap = cv2.VideoCapture(tfile.name)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out_path = tfile.name.replace(".mp4", "_processed.mp4")
+        out = cv2.VideoWriter(
+            out_path,
+            fourcc,
+            cap.get(cv2.CAP_PROP_FPS),
+            (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))),
+        )
 
-        stframe = st.empty()  # placeholder for video frames
-
+        st.info("⏳ Processing video, please wait...")
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
             frame = run_inference_and_draw(frame, model, confidence, overlap_thresh, object_classes)
-            stframe.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), channels="RGB", use_container_width=True)
-            time.sleep(0.03)  # mimic ~30fps
+            out.write(frame)
 
         cap.release()
+        out.release()
+
+        st.success("✅ Video processed successfully!")
+        st.video(out_path)
 
 # --- Live Webcam ---
 elif option == "Live Webcam":
