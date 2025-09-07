@@ -6,11 +6,11 @@ import numpy as np
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, WebRtcMode
 from av import VideoFrame
 
-st.set_page_config(page_title="YOLOv8 Detector", layout="wide")
-st.title("YOLOv8 Object Detection with Webcam")
+st.set_page_config(page_title="YOLOv11(s) Detector", layout="wide")
+st.title("YOLOv11(s) Object Detection with Webcam")
 
 # --- Load model ---
-MODEL_PATH = "models/best.pt"  # Replace with your weights path
+MODEL_PATH = "models/best.onnx"
 model = YOLO(MODEL_PATH)
 
 # --- Sidebar for detection settings ---
