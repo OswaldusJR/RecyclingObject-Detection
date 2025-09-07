@@ -106,29 +106,30 @@ def draw_yolo_live(img, model, confidence, overlap_thresh, object_classes):
 class YOLOWebcamProcessor(VideoProcessorBase):
     def __init__(self):
         self.frame_count = 0
-        self.skip_rate = 2  # inference every 2nd frame
+        self.skip_rate = 2  # run YOLO every 2nd frame
         self.last_results = None  # store last YOLO results
 
     def recv(self, frame: VideoFrame) -> VideoFrame:
         img = frame.to_ndarray(format="bgr24")
         orig_h, orig_w = img.shape[:2]
 
-        # Optional: downscale for faster inference
-        scale_factor = 640 / orig_w if orig_w > 640 else 1.0
-        proc_w, proc_h = int(orig_w * scale_factor), int(orig_h * scale_factor)
-        img_proc = cv2.resize(img, (proc_w, proc_h))
+        # --- Downscale for inference only ---
+        max_inference_width = 640
+        scale_factor = max_inference_width / orig_w if orig_w > max_inference_width else 1.0
+        infer_w, infer_h = int(orig_w * scale_factor), int(orig_h * scale_factor)
+        img_infer = cv2.resize(img, (infer_w, infer_h))
 
-        # Run YOLO inference every skip_rate frames
+        # --- Run inference every skip_rate frames ---
         self.frame_count += 1
         if self.frame_count % self.skip_rate == 0 or self.last_results is None:
             try:
                 cls_indices = [list(model.names).index(cls) for cls in object_classes if cls in model.names] if object_classes else None
-                self.last_results = model(img_proc, conf=confidence, iou=overlap_thresh, classes=cls_indices)
+                self.last_results = model(img_infer, conf=confidence, iou=overlap_thresh, classes=cls_indices)
             except Exception as e:
                 print(f"[YOLO ERROR] {e}")
                 self.last_results = None
 
-        # Always draw boxes on current frame
+        # --- Draw boxes on original frame ---
         img_display = img.copy()
         if self.last_results:
             font_scale = max(0.5, min(orig_w, orig_h) / 400)
@@ -136,8 +137,8 @@ class YOLOWebcamProcessor(VideoProcessorBase):
 
             for r in self.last_results:
                 for box in r.boxes:
-                    # Rescale box coords back to original size
-                    x1, y1, x2, y2 = map(int, box.xyxy[0] / scale_factor)
+                    # Rescale coordinates from inference frame to original frame
+                    x1, y1, x2, y2 = map(lambda v: int(v / scale_factor), box.xyxy[0])
                     cls_id = int(box.cls[0])
                     conf_score = float(box.conf[0])
                     label = f"{model.names[cls_id]} {conf_score:.2f}"
@@ -145,8 +146,10 @@ class YOLOWebcamProcessor(VideoProcessorBase):
                     # Draw rectangle
                     cv2.rectangle(img_display, (x1, y1), (x2, y2), (0, 255, 0), thickness)
                     (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
-                    cv2.rectangle(img_display, (x1, max(0, y1 - text_height - baseline)), (x1 + text_width, y1), (0, 255, 0), -1)
-                    cv2.putText(img_display, label, (x1, max(0, y1 - baseline)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), thickness)
+                    cv2.rectangle(img_display, (x1, max(0, y1 - text_height - baseline)),
+                                  (x1 + text_width, y1), (0, 255, 0), -1)
+                    cv2.putText(img_display, label, (x1, max(0, y1 - baseline)),
+                                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), thickness)
 
         return VideoFrame.from_ndarray(img_display, format="bgr24")
 
